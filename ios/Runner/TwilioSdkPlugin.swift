@@ -31,6 +31,7 @@ import TwilioVideo
     private var isVideoEnabled = false
     private var isScreenShareActive = false
     private var currentParticipants: [String: [String: Any]] = [:]
+    private var screenVideoViewId: Int? = nil
     
     // Video view tracking
     private var localVideoViewId: Int? = nil
@@ -102,6 +103,8 @@ import TwilioVideo
             getLocalVideoViewId(result: result)
         case "getRemoteVideoViewId":
             getRemoteVideoViewId(call: call, result: result)
+        case "getLocalScreenShareViewId":
+            getLocalScreenShareViewId(result: result)
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -312,6 +315,12 @@ import TwilioVideo
         let viewId = remoteVideoViewIds[participantId]
         print("TwilioSdkPlugin: getRemoteVideoViewId: participantId=\(participantId), viewId=\(viewId ?? -1)")
         result(viewId)
+    }
+
+    private func getLocalScreenShareViewId(result: @escaping FlutterResult) {
+        print("TwilioSdkPlugin: getLocalScreenShareViewId: \(screenVideoViewId ?? -1)")
+        // ReplayKit-based screen share not implemented yet; return nil until available
+        result(screenVideoViewId)
     }
 
     private func getParticipantsList() -> [[String: Any]] {

@@ -1,15 +1,21 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:async';
 import 'package:chime/common/common.dart';
 import 'package:chime/common/services/twilio_service.dart';
 import 'package:chime/common/services/permission_service.dart';
-import 'package:chime/common/widgets/twilio_video_view.dart';
+import 'package:chime/meetings/views/widgets/stop_share_button.dart';
+import 'package:chime/meetings/views/widgets/control_bar.dart';
+import 'package:chime/meetings/views/widgets/expanded_participant_overlay.dart';
+import 'package:chime/meetings/views/widgets/participants_list.dart';
+import 'package:chime/meetings/views/widgets/screen_share_indicator.dart';
+import 'package:chime/meetings/views/widgets/video_grid.dart';
 import 'package:chime/meetings/models/attendee_model.dart';
 import 'package:chime/meetings/models/meeting_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logger/logger.dart';
-// Removed: collection and connectivity_plus; using global NetworkService instead
 
 class ActiveMeetingScreen extends StatefulWidget {
   final MeetingModel meeting;
@@ -38,7 +44,6 @@ class _ActiveMeetingScreenState extends State<ActiveMeetingScreen> {
   Timer? _controlsTimer;
 
   // Note: Network awareness is handled globally via NetworkService/NetworkBanner
-
   StreamSubscription<List<AttendeeModel>>? _participantsSubscription;
   StreamSubscription<String>? _roomDisconnectedSubscription;
 
@@ -49,8 +54,6 @@ class _ActiveMeetingScreenState extends State<ActiveMeetingScreen> {
     _permissionService = PermissionService();
     _initializeMeeting();
   }
-
-  // Removed local connectivity monitoring; rely on NetworkService and global banner
 
   Future<void> _initializeMeeting() async {
     try {
@@ -85,8 +88,6 @@ class _ActiveMeetingScreenState extends State<ActiveMeetingScreen> {
           return;
         }
       }
-
-      // Permissions granted, proceed
 
       // Connect to the room
       final connected = await _twilioService.connectToRoom(
@@ -139,9 +140,6 @@ class _ActiveMeetingScreenState extends State<ActiveMeetingScreen> {
             log.w("ActiveMeetingScreen:::Could not get local video view ID");
           }
         }
-
-        // If screen share already active (edge case), no-op; UI shows indicator
-
         // Listen to participants updates
         _participantsSubscription = _twilioService.participantsStream.listen((participants) async {
           if (mounted) {
@@ -329,165 +327,13 @@ class _ActiveMeetingScreenState extends State<ActiveMeetingScreen> {
   }
 
   Widget _buildVideoGrid() {
-    final allParticipants = _participants;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth;
-        final availableHeight = constraints.maxHeight;
-        final count = allParticipants.length;
-        if (count == 0) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.people, size: 64, color: Colors.white54),
-                const SizedBox(height: 16),
-                Text(
-                  widget.meeting.title,
-                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Determine optimal layout to fill available width and height
-        int bestCols = 1;
-        double bestAspect = 1.0;
-        double bestArea = -1;
-        const spacing = 8.0;
-        for (int cols = 1; cols <= count; cols++) {
-          final rows = (count / cols).ceil();
-          final totalHSpacing = (rows - 1) * spacing;
-          final totalWSpacing = (cols - 1) * spacing;
-          final tileWidth = (availableWidth - totalWSpacing) / cols;
-          final tileHeight = (availableHeight - totalHSpacing) / rows;
-          if (tileWidth <= 0 || tileHeight <= 0) continue;
-          final area = tileWidth * tileHeight;
-          if (area > bestArea) {
-            bestArea = area;
-            bestCols = cols;
-            bestAspect = tileWidth / tileHeight;
-          }
-        }
-        final crossAxisCount = bestCols.clamp(1, count);
-
-        return GridView.builder(
-          padding: const EdgeInsets.all(8),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: bestAspect,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-          ),
-          itemCount: allParticipants.length,
-          itemBuilder: (context, index) {
-            final participant = allParticipants[index];
-            final isLocal = _isLocalParticipant(participant);
-            final isSharer = participant.isScreenSharing == true;
-
-            int? viewId;
-            if (isLocal) {
-              viewId = _localVideoViewId;
-            } else {
-              viewId = _remoteVideoViewIds[participant.attendeeId];
-            }
-
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: isLocal ? Colors.blue : (participant.isScreenSharing ? Colors.green : Colors.grey), width: 3),
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (isSharer && isLocal)
-                      Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.screen_share, color: Colors.redAccent, size: 36),
-                            SizedBox(height: 8),
-                            Text("You're sharing your screen", style: TextStyle(color: Colors.white)),
-                          ],
-                        ),
-                      )
-                    else if (!isLocal && isSharer)
-                      (viewId != null)
-                          ? TwilioVideoView(
-                              key: ValueKey("${participant.attendeeId}-${participant.isVideoEnabled}-${viewId}-screen"),
-                              viewId: viewId,
-                              isLocal: false,
-                              participantId: participant.attendeeId,
-                            )
-                          : Center(child: CircularProgressIndicator(color: Colors.white.withOpacity(0.6)))
-                    else if ((isLocal && _isVideoEnabled && _localVideoViewId != null) || (!isLocal && participant.isVideoEnabled && viewId != null))
-                      TwilioVideoView(
-                        key: ValueKey("${participant.attendeeId}-${participant.isVideoEnabled}-${viewId}"),
-                        viewId: viewId!,
-                        isLocal: isLocal,
-                        participantId: isLocal ? null : participant.attendeeId,
-                      )
-                    else
-                      Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircleAvatar(
-                              radius: 30,
-                              backgroundColor: Colors.white.withOpacity(0.2),
-                              child: const Icon(Icons.person, color: Colors.white, size: 30),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(participant.name ?? 'Participant', style: const TextStyle(color: Colors.white, fontSize: 14)),
-                          ],
-                        ),
-                      ),
-
-                    // Name overlay
-                    Positioned(
-                      bottom: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(4)),
-                        child: Text(isLocal ? 'You' : (participant.name ?? 'Participant'), style: const TextStyle(color: Colors.white, fontSize: 12)),
-                      ),
-                    ),
-
-                    // Mic state overlay
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(12)),
-                        child: Icon(
-                          participant.isAudioEnabled ? Icons.mic : Icons.mic_off,
-                          size: 14,
-                          color: participant.isAudioEnabled ? Colors.white : Colors.redAccent,
-                        ),
-                      ),
-                    ),
-
-                    // Full-size GestureDetector overlay to ensure taps work over PlatformViews
-                    Positioned.fill(
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(onTap: () => setState(() => _expandedParticipantId = participant.attendeeId)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+    return VideoGrid(
+      participants: _participants,
+      isLocalVideoEnabled: _isVideoEnabled,
+      localVideoViewId: _localVideoViewId,
+      remoteVideoViewIds: _remoteVideoViewIds,
+      isLocalParticipant: _isLocalParticipant,
+      onExpandParticipant: (pid) => setState(() => _expandedParticipantId = pid),
     );
   }
 
@@ -518,10 +364,12 @@ class _ActiveMeetingScreenState extends State<ActiveMeetingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        await _leaveMeeting();
-        return true;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) {
+          await _leaveMeeting();
+        }
       },
       child: NetworkAwareScaffoldWithBanner(
         backgroundColor: Colors.black,
@@ -542,7 +390,7 @@ class _ActiveMeetingScreenState extends State<ActiveMeetingScreen> {
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: widget.meeting.roomName!));
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meeting ID copied')));
+                    ToastUtil.showSuccessToast(context, 'Meeting ID copied');
                   }
                 },
               ),
@@ -582,251 +430,44 @@ class _ActiveMeetingScreenState extends State<ActiveMeetingScreen> {
                 // Video Grid/View
                 _isMeetingJoined ? _buildVideoGrid() : const Center(child: CircularProgressIndicator(color: Colors.white)),
 
-                // Connectivity banner handled globally via NetworkBanner
-
-                // Remove local PIP and special full-screen share views. Keep quick Stop Share button.
-
                 // Screen share active indicator (small banner)
-                if (_isScreenShareActive)
-                  Positioned(
-                    top: 90,
-                    right: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.9), borderRadius: BorderRadius.circular(16)),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.screen_share, size: 14, color: Colors.white),
-                          SizedBox(width: 6),
-                          Text(
-                            'Sharing Screen',
-                            style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                if (_isScreenShareActive) const Positioned(top: 90, right: 16, child: ScreenShareIndicator()),
 
                 // Stop share quick action
-                if (_isScreenShareActive)
-                  Positioned(
-                    bottom: 100,
-                    left: 16,
-                    child: ElevatedButton.icon(
-                      onPressed: _toggleScreenShare,
-                      icon: const Icon(Icons.stop_screen_share),
-                      label: const Text('Stop Share'),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                    ),
-                  ),
+                if (_isScreenShareActive) Positioned(bottom: 100, left: 16, child: StopShareButton(onPressed: _toggleScreenShare)),
 
                 // Expanded overlays are removed for equal-grid experience
                 if (_expandedParticipantId != null)
-                  Positioned.fill(
-                    child: Container(
-                      color: Colors.black,
-                      child: Stack(
-                        children: [
-                          Builder(
-                            builder: (context) {
-                              final pid = _expandedParticipantId!;
-                              final p = _participants.firstWhere((e) => e.attendeeId == pid, orElse: () => AttendeeModel(attendeeId: pid));
-                              final isLocal = _isLocalParticipant(p);
-                              final isSharer = p.isScreenSharing == true;
-                              int? viewId;
-                              if (isLocal) {
-                                viewId = _localVideoViewId;
-                              } else {
-                                viewId = _remoteVideoViewIds[pid];
-                              }
-
-                              Widget content;
-                              if (isSharer && isLocal) {
-                                content = Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: const [
-                                      Icon(Icons.screen_share, color: Colors.redAccent, size: 48),
-                                      SizedBox(height: 12),
-                                      Text("You're sharing your screen", style: TextStyle(color: Colors.white, fontSize: 16)),
-                                    ],
-                                  ),
-                                );
-                              } else if (!isLocal && isSharer) {
-                                if (viewId != null) {
-                                  content = TwilioVideoView(
-                                    key: ValueKey("expanded-${pid}-${p.isVideoEnabled}-${viewId}-screen"),
-                                    viewId: viewId,
-                                    isLocal: false,
-                                    participantId: pid,
-                                  );
-                                } else {
-                                  content = const Center(child: CircularProgressIndicator(color: Colors.white));
-                                }
-                              } else if ((isLocal && _isVideoEnabled && _localVideoViewId != null) ||
-                                  (!isLocal && p.isVideoEnabled && viewId != null)) {
-                                content = TwilioVideoView(
-                                  key: ValueKey("expanded-${pid}-${p.isVideoEnabled}-${viewId}"),
-                                  viewId: viewId!,
-                                  isLocal: isLocal,
-                                  participantId: isLocal ? null : pid,
-                                );
-                              } else {
-                                content = Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 40,
-                                        backgroundColor: Colors.white.withOpacity(0.2),
-                                        child: const Icon(Icons.person, color: Colors.white, size: 40),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Text(p.name ?? 'Participant', style: const TextStyle(color: Colors.white)),
-                                    ],
-                                  ),
-                                );
-                              }
-
-                              return Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Container(color: Colors.black, child: content),
-                                ),
-                              );
-                            },
-                          ),
-                          Positioned(
-                            top: 16,
-                            right: 16,
-                            child: InkWell(
-                              onTap: () => setState(() => _expandedParticipantId = null),
-                              child: Container(
-                                decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(20)),
-                                padding: const EdgeInsets.all(8),
-                                child: const Icon(Icons.close, color: Colors.white),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  ExpandedParticipantOverlay(
+                    participantId: _expandedParticipantId!,
+                    participants: _participants,
+                    remoteVideoViewIds: _remoteVideoViewIds,
+                    localVideoViewId: _localVideoViewId,
+                    isLocalVideoEnabled: _isVideoEnabled,
+                    isLocalParticipant: _isLocalParticipant,
+                    onClose: () => setState(() => _expandedParticipantId = null),
                   ),
-
-                // Top Bar with meeting info
-                // (Top bar replaced by AppBar)
-
                 // Participants List
                 if (_showParticipantsList)
                   Positioned(
                     top: 80,
                     left: 16,
                     right: 16,
-                    child: Container(
-                      constraints: const BoxConstraints(maxHeight: 300),
-                      decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(12)),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Participants (${_participants.length})',
-                                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.white),
-                                  onPressed: _toggleParticipantsList,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Flexible(
-                            child: _participants.isEmpty
-                                ? const Padding(
-                                    padding: EdgeInsets.all(16.0),
-                                    child: Text('No other participants', style: TextStyle(color: Colors.white70)),
-                                  )
-                                : ListView.builder(
-                                    shrinkWrap: true,
-                                    itemCount: _participants.length,
-                                    itemBuilder: (context, index) {
-                                      final participant = _participants[index];
-                                      return ListTile(
-                                        leading: CircleAvatar(
-                                          backgroundColor: Colors.white.withOpacity(0.2),
-                                          child: const Icon(Icons.person, color: Colors.white),
-                                        ),
-                                        title: Text(participant.name ?? 'Participant ${index + 1}', style: const TextStyle(color: Colors.white)),
-                                        subtitle: Text(
-                                          'Audio: ${participant.isAudioEnabled ? "On" : "Off"} | Video: ${participant.isVideoEnabled ? "On" : "Off"}',
-                                          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    child: ParticipantsList(participants: _participants, onClose: _toggleParticipantsList),
                   ),
-
                 // Bottom Controls (always visible)
                 Positioned(
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [Colors.black.withOpacity(0.8), Colors.transparent],
-                      ),
-                    ),
-                    child: SafeArea(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _ControlButton(
-                                icon: _isAudioEnabled ? Icons.mic : Icons.mic_off,
-                                label: _isAudioEnabled ? 'Mute' : 'Unmute',
-                                isActive: _isAudioEnabled,
-                                onPressed: _toggleAudio,
-                              ),
-                              _ControlButton(
-                                icon: _isVideoEnabled ? Icons.videocam : Icons.videocam_off,
-                                label: _isVideoEnabled ? 'Stop Video' : 'Start Video',
-                                isActive: _isVideoEnabled,
-                                onPressed: _toggleVideo,
-                              ),
-                              _ControlButton(
-                                icon: Icons.screen_share,
-                                label: _isScreenShareActive ? 'Stop Share' : 'Share Screen',
-                                isActive: _isScreenShareActive,
-                                onPressed: _toggleScreenShare,
-                              ),
-                              _ControlButton(
-                                icon: Icons.call_end,
-                                label: 'End',
-                                isActive: false,
-                                backgroundColor: Colors.red,
-                                onPressed: _endMeetingForAll,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                  child: ControlBar(
+                    isAudioEnabled: _isAudioEnabled,
+                    isVideoEnabled: _isVideoEnabled,
+                    isScreenShareActive: _isScreenShareActive,
+                    onToggleAudio: _toggleAudio,
+                    onToggleVideo: _toggleVideo,
+                    onToggleScreenShare: _toggleScreenShare,
+                    onEndMeetingForAll: _endMeetingForAll,
                   ),
                 ),
               ],
@@ -834,37 +475,6 @@ class _ActiveMeetingScreenState extends State<ActiveMeetingScreen> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ControlButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isActive;
-  final Color? backgroundColor;
-  final VoidCallback onPressed;
-
-  const _ControlButton({required this.icon, required this.label, required this.isActive, required this.onPressed, this.backgroundColor});
-
-  @override
-  Widget build(BuildContext context) {
-    final bgColor = backgroundColor ?? (isActive ? Colors.white.withOpacity(0.2) : Colors.white.withOpacity(0.1));
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-          child: IconButton(
-            icon: Icon(icon, color: Colors.white),
-            onPressed: onPressed,
-            iconSize: 28,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
-      ],
     );
   }
 }

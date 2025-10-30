@@ -137,7 +137,7 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
 
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                             child: Icon(Icons.video_call, color: Theme.of(context).colorScheme.primary),
                           ),
                           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -149,7 +149,7 @@ class _MeetingsScreenState extends State<MeetingsScreen> {
                                 Container(
                                   margin: const EdgeInsets.only(top: 4),
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                                  decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                                   child: Text(
                                     'Active',
                                     style: TextStyle(color: Colors.green[700], fontSize: 10, fontWeight: FontWeight.w600),

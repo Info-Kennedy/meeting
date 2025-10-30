@@ -56,6 +56,7 @@ dependencies:
   # General
   intl: ^0.20.2
   logger: ^2.6.2
+  uuid: ^4.5.1
   url_launcher: ^6.3.2
   cached_network_image: ^3.4.1
 
@@ -88,6 +89,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_native_splash: ^2.4.7
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -129,3 +131,17 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  color_dark: "#121212"
+  image: assets/icons/ic_logo_dark.png
+  android: true
+  ios: true
+  web: false
+  image_dark: assets/icons/ic_logo_white.png
+  android_12:
+    color: "#FFFFFF"
+    color_dark: "#121212"
+    image: assets/icons/ic_logo_dark.png
+    image_dark: assets/icons/ic_logo_white.png
