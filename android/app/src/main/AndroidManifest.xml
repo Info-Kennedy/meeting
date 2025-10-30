@@ -8,6 +8,8 @@
     <!-- Screen sharing permission (for Android 10+) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- Android 13+ runtime notifications permission for foreground service visibility -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
     <application
         android:label="Meeting"
@@ -45,7 +47,7 @@
         <service
             android:name=".ScreenShareService"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
+            android:foregroundServiceType="mediaProjection|microphone" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:permission_handler/permission_handler.dart' as permission_handler;
 import 'package:logger/logger.dart';
 
@@ -83,9 +84,17 @@ class PermissionService {
   /// Note: Screen sharing permissions are handled differently on different platforms
   Future<bool> requestScreenSharePermission() async {
     try {
-      // On Android, screen capture may require different permissions
-      // On iOS, screen recording is handled through system prompts
-      // This is a placeholder - actual implementation may require platform channels
+      // On Android 13+ (API 33+), apps must request the notifications permission.
+      // Foreground services for screen capture rely on a visible notification.
+      if (Platform.isAndroid) {
+        // permission_handler maps to runtime 'notification' on Android 13+
+        final notifStatus = await permission_handler.Permission.notification.status;
+        if (!notifStatus.isGranted) {
+          final requested = await permission_handler.Permission.notification.request();
+          log.d("PermissionService:::Notification permission requested for screen share: $requested");
+          // Do not hard-fail if denied; MediaProjection may still work but OEMs can blank frames without a visible notification.
+        }
+      }
       log.d("PermissionService:::Screen share permission requested");
       return true;
     } catch (e) {

@@ -12,6 +12,16 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
+        // Ensure Twilio's WebRTC can find classes when running under Flutter's ClassLoader
+        // Use reflection because WebRtcClassLoader is package-private in Twilio's fork
+        try {
+            val clazz = Class.forName("tvi.webrtc.WebRtcClassLoader")
+            val method = clazz.getMethod("setClassLoader", ClassLoader::class.java)
+            method.invoke(null, this.classLoader)
+        } catch (e: Exception) {
+            // Best-effort; if it fails we still proceed and rely on defaults
+        }
+
         // Initialize Twilio Video SDK method handler
         twilioSdkMethodHandler = TwilioSdkMethodHandler(
             flutterEngine.dartExecutor,

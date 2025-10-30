@@ -42,6 +42,7 @@ class _ActiveMeetingScreenState extends State<ActiveMeetingScreen> {
   final Map<String, int?> _remoteVideoViewIds = {};
   String? _expandedParticipantId;
   Timer? _controlsTimer;
+  bool _participantsInitialized = false;
 
   // Note: Network awareness is handled globally via NetworkService/NetworkBanner
   StreamSubscription<List<AttendeeModel>>? _participantsSubscription;
@@ -143,6 +144,23 @@ class _ActiveMeetingScreenState extends State<ActiveMeetingScreen> {
         // Listen to participants updates
         _participantsSubscription = _twilioService.participantsStream.listen((participants) async {
           if (mounted) {
+            // Identify newly joined participants (skip the very first emission)
+            if (_participantsInitialized) {
+              final previousIds = _participants.map((p) => p.attendeeId).toSet();
+              final currentIds = participants.map((p) => p.attendeeId).toSet();
+              final newIds = currentIds.difference(previousIds);
+              if (newIds.isNotEmpty) {
+                for (final id in newIds) {
+                  final joined = participants.firstWhere((p) => p.attendeeId == id, orElse: () => AttendeeModel(attendeeId: id));
+                  if (!_isLocalParticipant(joined)) {
+                    final displayName = (joined.name?.isNotEmpty == true) ? joined.name! : joined.attendeeId;
+                    ToastUtil.showSuccessToast(context, '$displayName joined');
+                  }
+                }
+              }
+            } else {
+              _participantsInitialized = true;
+            }
             // Update view IDs for remote participants
             final updatedViewIds = <String, int?>{};
             for (final participant in participants) {

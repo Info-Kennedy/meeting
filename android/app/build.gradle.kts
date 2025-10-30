@@ -35,6 +35,13 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
@@ -46,5 +53,5 @@ flutter {
 dependencies {
     // Twilio Video SDK
     // Latest version available at: https://www.twilio.com/docs/video/android-getting-started
-    implementation("com.twilio:video-android:7.9.1")
+    implementation("com.twilio:video-android:7.8.0")
 }

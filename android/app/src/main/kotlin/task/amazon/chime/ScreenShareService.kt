@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 
@@ -17,6 +18,8 @@ class ScreenShareService : Service() {
         const val NOTIFICATION_ID = 1002
         const val ACTION_START = "task.amazon.chime.action.START_SCREEN_SHARE"
         const val ACTION_STOP = "task.amazon.chime.action.STOP_SCREEN_SHARE"
+        @Volatile
+        var isInForeground: Boolean = false
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -39,14 +42,25 @@ class ScreenShareService : Service() {
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Screen sharing active")
             .setContentText("Your screen is being shared")
-            .setSmallIcon(applicationInfo.icon)
+            .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .build()
-        startForeground(NOTIFICATION_ID, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Pass the mediaProjection type so Android 14/15 recognize the correct FGS type
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+        isInForeground = true
     }
 
     private fun stopForegroundInternal() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+        isInForeground = false
     }
 }

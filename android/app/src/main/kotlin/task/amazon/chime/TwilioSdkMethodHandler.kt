@@ -14,6 +14,9 @@ import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
 import io.flutter.plugin.platform.PlatformViewRegistry
 import com.twilio.video.*
+import com.twilio.video.H264Codec
+import com.twilio.video.VideoCodec
+import com.twilio.video.EncodingParameters
 import com.twilio.video.Camera2Capturer
 import tvi.webrtc.Camera2Enumerator
 import android.app.Activity
@@ -73,6 +76,7 @@ class TwilioSdkMethodHandler(
     private var screenVideoViewId: Int? = null
     private var screenFirstFrameSeen: Boolean = false
     private var screenInitRetried: Boolean = false
+    private var screenInitAttempts: Int = 0
     
     // Video view tracking
     private var localVideoViewId: Int? = null
@@ -219,6 +223,24 @@ class TwilioSdkMethodHandler(
             // Build connect options
             val connectOptionsBuilder = ConnectOptions.Builder(accessToken)
                 .roomName(roomName)
+
+            // Prefer H.264 to avoid VP8 software encoder black frames on some Android 14/15 devices.
+            // Use when available; ignore if the SDK version lacks this API.
+            try {
+                val preferredCodecs: List<VideoCodec> = listOf(H264Codec())
+                // Newer SDKs
+                connectOptionsBuilder.preferVideoCodecs(preferredCodecs)
+            } catch (t: Throwable) {
+                Log.w(TAG, "preferVideoCodecs API not available on this SDK: ${t.message}")
+            }
+
+            // Set conservative bitrates for stability during screen share (in kbps)
+            try {
+                val encoding = EncodingParameters(16 * 8, 1800) // 128 kbps audio, 1.8 Mbps video
+                connectOptionsBuilder.encodingParameters(encoding)
+            } catch (e: Exception) {
+                Log.w(TAG, "Unable to set encoding parameters: ${e.message}")
+            }
 
             // Note: Identity is typically set via access token, not ConnectOptions
 
@@ -756,18 +778,6 @@ class TwilioSdkMethodHandler(
             val projectionManager = activity.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             val captureIntent = projectionManager.createScreenCaptureIntent()
             pendingScreenShareResult = result
-            // Start foreground service before requesting projection result on Android 14+
-            try {
-                val startIntent = Intent(context, ScreenShareService::class.java)
-                startIntent.action = ScreenShareService.ACTION_START
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(startIntent)
-                } else {
-                    context.startService(startIntent)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to start foreground service: ${e.message}", e)
-            }
             activity.startActivityForResult(captureIntent, REQUEST_SCREEN_CAPTURE)
         } catch (e: Exception) {
             Log.e(TAG, "Error starting screen share: ${e.message}", e)
@@ -781,55 +791,90 @@ class TwilioSdkMethodHandler(
         try {
             if (resultCode == Activity.RESULT_OK && data != null) {
                 Log.d(TAG, "Screen capture permission granted")
-                // Create screen capturer with proper constructor (context, resultCode, data, listener)
+                // Start foreground service AFTER user consent (Android 14/15 requirement)
+                try {
+                    val startIntent = Intent(context, ScreenShareService::class.java)
+                    startIntent.action = ScreenShareService.ACTION_START
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        context.startForegroundService(startIntent)
+                    } else {
+                        context.startService(startIntent)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to start foreground service after consent: ${e.message}", e)
+                }
+                // Initialize MediaProjection + ScreenCapturer with retry to satisfy Android 15 timing
                 screenFirstFrameSeen = false
                 screenInitRetried = false
-                screenCapturer = ScreenCapturer(activity, resultCode, data, object : ScreenCapturer.Listener {
-                    override fun onScreenCaptureError(errorDescription: String) {
-                        Log.e(TAG, "Screen capture error: $errorDescription")
-                    }
-                    override fun onFirstFrameAvailable() {
-                        Log.d(TAG, "Screen capture first frame available")
-                        screenFirstFrameSeen = true
-                        // Publish if not already published and participant available
-                        tryPublishScreenTrack()
-                    }
-                })
-                // Dispose previous if exists
-                screenVideoTrack?.let { old ->
+                screenInitAttempts = 0
+                fun initScreenShareOnce() {
                     try {
-                        localParticipant?.unpublishTrack(old)
+                        // Ensure FGS is up; if not, delay a bit
+                        if (!ScreenShareService.isInForeground) {
+                            if (screenInitAttempts < 20) { // up to ~4s
+                                screenInitAttempts++
+                                mainHandler.postDelayed({ initScreenShareOnce() }, 200)
+                                return
+                            }
+                        }
+                        // Dispose previous if exists
+                        screenVideoTrack?.let { old ->
+                            try { localParticipant?.unpublishTrack(old) } catch (_: Exception) {}
+                            old.release()
+                            screenVideoTrack = null
+                        }
+                        // Create capturer and track
+                        screenCapturer = ScreenCapturer(activity, resultCode, data, object : ScreenCapturer.Listener {
+                            override fun onScreenCaptureError(errorDescription: String) {
+                                Log.e(TAG, "Screen capture error: $errorDescription")
+                            }
+                            override fun onFirstFrameAvailable() {
+                                Log.d(TAG, "Screen capture first frame available")
+                                screenFirstFrameSeen = true
+                                tryPublishScreenTrack()
+                            }
+                        })
+                        val cap = screenCapturer
+                        if (cap == null) {
+                            throw IllegalStateException("Screen capturer not created")
+                        }
+                        // Name the track explicitly so remote clients can distinguish it as screen share
+                        screenVideoTrack = LocalVideoTrack.create(context, true, cap, "screen")
+                        pendingScreenPublish = true
+                        if (screenVideoViewId == null) {
+                            screenVideoViewId = viewIdCounter++
+                            Log.d(TAG, "Created local screen view ID: $screenVideoViewId")
+                        }
+                        isScreenShareActive = true
+                        roomEventStreamHandler.sendRoomEvent(mapOf(
+                            "type" to "screenShareStateChanged",
+                            "active" to true
+                        ))
+                        tryPublishScreenTrack()
+                        pendingScreenShareResult?.success(true)
+                        pendingScreenShareResult = null
+                    } catch (se: SecurityException) {
+                        // Android 15 may still race; retry a few times while FGS settles
+                        Log.w(TAG, "Screen share init SecurityException, will retry: ${se.message}")
+                        if (screenInitAttempts < 20) { // up to ~4s
+                            screenInitAttempts++
+                            mainHandler.postDelayed({ initScreenShareOnce() }, 200)
+                        } else {
+                            pendingScreenShareResult?.error("SCREEN_SHARE_ERROR", se.message, null)
+                            pendingScreenShareResult = null
+                        }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error unpublishing old screen track: ${e.message}", e)
+                        Log.e(TAG, "Failed to init screen share: ${e.message}", e)
+                        pendingScreenShareResult?.error("SCREEN_SHARE_ERROR", e.message, null)
+                        pendingScreenShareResult = null
                     }
-                    old.release()
-                    screenVideoTrack = null
                 }
-                // Create local video track from screen
-                val capturer = screenCapturer
-                if (capturer == null) {
-                    pendingScreenShareResult?.error("SCREEN_SHARE_ERROR", "Screen capturer not created", null)
-                    pendingScreenShareResult = null
-                    return
+                // Kick off initialization without blocking UI thread; wait for FGS readiness asynchronously
+                if (ScreenShareService.isInForeground) {
+                    initScreenShareOnce()
+                } else {
+                    mainHandler.postDelayed({ initScreenShareOnce() }, 200)
                 }
-                screenVideoTrack = LocalVideoTrack.create(context, true, capturer)
-                // Mark pending publish; will attempt now and on callbacks
-                pendingScreenPublish = true
-                // Assign a view id for screen track if not present
-                if (screenVideoViewId == null) {
-                    screenVideoViewId = viewIdCounter++
-                    Log.d(TAG, "Created local screen view ID: $screenVideoViewId")
-                }
-                isScreenShareActive = true
-                roomEventStreamHandler.sendRoomEvent(mapOf(
-                    "type" to "screenShareStateChanged",
-                    "active" to true
-                ))
-                // Attempt immediate publish; if participant not ready, will publish later
-                tryPublishScreenTrack()
-                // Report success to Flutter once permission is granted and we started capture
-                pendingScreenShareResult?.success(true)
-                pendingScreenShareResult = null
 
                 // If first frame not seen quickly (some Samsung devices), recreate once
                 mainHandler.postDelayed({
@@ -857,7 +902,7 @@ class TwilioSdkMethodHandler(
                             })
                             val cap2 = screenCapturer
                             if (cap2 != null) {
-                                screenVideoTrack = LocalVideoTrack.create(context, true, cap2)
+                                screenVideoTrack = LocalVideoTrack.create(context, true, cap2, "screen")
                                 pendingScreenPublish = true
                                 tryPublishScreenTrack()
                             }
