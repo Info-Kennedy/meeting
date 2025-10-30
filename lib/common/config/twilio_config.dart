@@ -9,12 +9,6 @@ class TwilioConfig {
   // Test Auth Token
   static const String authToken = '5711858c1000faa1b07e5c38558262a9';
 
-  // Test Account SID - used to exercise the REST API
-  // static const String accountSid = 'AC818858999e0d91c28bb6e8f709734134';
-
-  // // Test Auth Token
-  // static const String authToken = '1c3dfae0cad648ca08f19be427e771ea';
-
   // Video Grant API Key SID (needed for access token generation)
   //
   // TO GET YOUR API KEY:
