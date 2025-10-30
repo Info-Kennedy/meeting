@@ -54,11 +54,11 @@ class RequestItem extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                commonHelper.getIntlLabel(data['service_data']['service']['name_i18n']),
+                                commonHelper.getIntlLabelSync(data['service_data']['service']['name_i18n']),
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white),
                               ),
                               Text(
-                                commonHelper.getIntlLabel(data['service_data']['service_type']['name_i18n']),
+                                commonHelper.getIntlLabelSync(data['service_data']['service_type']['name_i18n']),
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white),
                               ),
                             ],
@@ -80,7 +80,7 @@ class RequestItem extends StatelessWidget {
                                   );
                                   if (!await launchUrl(uri, mode: LaunchMode.platformDefault)) {
                                     // ignore: use_build_context_synchronously
-                                    ToastUtil.showErrorToast(context, commonHelper.getStringLabel("error_launch_url"));
+                                    ToastUtil.showErrorToast(context, commonHelper.getStringLabelSync("error_launch_url"));
                                   }
                                 },
                                 child: SvgPicture.asset(commonHelper.getIconPath("ic_direction.svg"), width: 28, height: 28),
@@ -112,7 +112,7 @@ class RequestItem extends StatelessWidget {
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 15),
                               child: Text(
-                                "${commonHelper.getStringLabel("status")} ${data['status']}",
+                                "${commonHelper.getStringLabelSync("status")} ${data['status']}",
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                   color: data['status'].toLowerCase().contains("rejected") || data['status'].toLowerCase().contains("cancelled")
                                       ? Colors.red.shade300
@@ -141,7 +141,7 @@ class RequestItem extends StatelessWidget {
                                           var uri = Uri.parse("${data['invoice_path']}");
                                           if (!await launchUrl(uri, mode: LaunchMode.platformDefault)) {
                                             // ignore: use_build_context_synchronously
-                                            ToastUtil.showErrorToast(context, commonHelper.getStringLabel("error_launch_url"));
+                                            ToastUtil.showErrorToast(context, commonHelper.getStringLabelSync("error_launch_url"));
                                           }
                                         },
                                         icon: Icon(Icons.file_download, color: Theme.of(context).colorScheme.primary),
@@ -160,7 +160,7 @@ class RequestItem extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 15),
                             child: Text(
-                              "${commonHelper.getStringLabel("reference_number")} : ${referenceNumber['log'].split(":")[1].trim()}",
+                              "${commonHelper.getStringLabelSync("reference_number")} : ${referenceNumber['log'].split(":")[1].trim()}",
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface),
                             ),
                           ),
@@ -169,7 +169,7 @@ class RequestItem extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 15),
                             child: SingleChildScrollView(
                               child: Text(
-                                "${commonHelper.getStringLabel("rejected_reason")} : ${rejectedReason['log'].split(":")[1].trim()}",
+                                "${commonHelper.getStringLabelSync("rejected_reason")} : ${rejectedReason['log'].split(":")[1].trim()}",
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.red.shade300),
                               ),
                             ),

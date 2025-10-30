@@ -4,6 +4,7 @@ export 'helper/ui_helper.dart';
 export 'repository/api_repository.dart';
 export 'repository/network_aware_api_repository.dart';
 export 'repository/preferences_repository.dart';
+export 'services/encrypted_database_service.dart';
 export 'services/network_service.dart';
 export 'bloc/network_bloc.dart';
 export 'utils/app_strings.dart';

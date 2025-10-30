@@ -12,7 +12,8 @@ class ApiRepository {
   VoidCallback? onUnauthorized;
 
   ApiRepository(this._dio, this.prefRepo, {TokenService? tokenService}) : _tokenService = tokenService {
-    _dio.options.headers["Authorization"] = "Bearer ${prefRepo.getPreference(Constants.PREF_KEY_AUTH_TOKEN)}";
+    // Token initialization will be done lazily when needed
+    // since getPreference is now async
   }
 
   /// Set callback to be called when 401 Unauthorized error occurs
@@ -30,7 +31,7 @@ class ApiRepository {
     if (_tokenService != null) {
       return await _tokenService.getValidAccessToken();
     }
-    return prefRepo.getPreference(Constants.PREF_KEY_AUTH_TOKEN);
+    return await prefRepo.getPreference(Constants.PREF_KEY_AUTH_TOKEN);
   }
 
   /// Check if the API endpoint requires authentication
@@ -50,7 +51,7 @@ class ApiRepository {
           _updateAuthorizationHeader(authToken!);
         } else {
           // Check if user is already logged in before triggering logout
-          final userData = prefRepo.getPreference(Constants.PREF_KEY_USER);
+          final userData = await prefRepo.getPreference(Constants.PREF_KEY_USER);
           if (userData != null && userData.isNotEmpty) {
             // User is logged in but token is invalid, trigger logout
             log.w("ApiRepository:::postRequest::User logged in but no valid token available, triggering logout");
@@ -89,7 +90,7 @@ class ApiRepository {
           _updateAuthorizationHeader(authToken!);
         } else {
           // Check if user is already logged in before triggering logout
-          final userData = prefRepo.getPreference(Constants.PREF_KEY_USER);
+          final userData = await prefRepo.getPreference(Constants.PREF_KEY_USER);
           if (userData != null && userData.isNotEmpty) {
             // User is logged in but token is invalid, trigger logout
             log.w("ApiRepository:::formDataPostRequest::User logged in but no valid token available, triggering logout");
@@ -128,7 +129,7 @@ class ApiRepository {
           _updateAuthorizationHeader(authToken!);
         } else {
           // Check if user is already logged in before triggering logout
-          final userData = prefRepo.getPreference(Constants.PREF_KEY_USER);
+          final userData = await prefRepo.getPreference(Constants.PREF_KEY_USER);
           if (userData != null && userData.isNotEmpty) {
             // User is logged in but token is invalid, trigger logout
             log.w("ApiRepository:::getRequest::User logged in but no valid token available, triggering logout");
@@ -179,7 +180,7 @@ class ApiRepository {
           _updateAuthorizationHeader(authToken!);
         } else {
           // Check if user is already logged in before triggering logout
-          final userData = prefRepo.getPreference(Constants.PREF_KEY_USER);
+          final userData = await prefRepo.getPreference(Constants.PREF_KEY_USER);
           if (userData != null && userData.isNotEmpty) {
             // User is logged in but token is invalid, trigger logout
             log.w("ApiRepository:::getRequestWithoutMenu::User logged in but no valid token available, triggering logout");
@@ -218,7 +219,7 @@ class ApiRepository {
           _updateAuthorizationHeader(authToken!);
         } else {
           // Check if user is already logged in before triggering logout
-          final userData = prefRepo.getPreference(Constants.PREF_KEY_USER);
+          final userData = await prefRepo.getPreference(Constants.PREF_KEY_USER);
           if (userData != null && userData.isNotEmpty) {
             // User is logged in but token is invalid, trigger logout
             log.w("ApiRepository:::putRequest::User logged in but no valid token available, triggering logout");
@@ -257,7 +258,7 @@ class ApiRepository {
           _updateAuthorizationHeader(authToken!);
         } else {
           // Check if user is already logged in before triggering logout
-          final userData = prefRepo.getPreference(Constants.PREF_KEY_USER);
+          final userData = await prefRepo.getPreference(Constants.PREF_KEY_USER);
           if (userData != null && userData.isNotEmpty) {
             // User is logged in but token is invalid, trigger logout
             log.w("ApiRepository:::deleteRequest::User logged in but no valid token available, triggering logout");

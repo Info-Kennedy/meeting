@@ -28,7 +28,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       emit(state.copyWith(status: () => HomeStatus.initial));
       List<MenuItem> bottomMenuItems = await _repository.getBottomNavigationConfig();
 
-      String? menuItem = _repository.prefRepo.getPreference(Constants.PREF_KEY_MENU_ITEM);
+      String? menuItem = await _repository.prefRepo.getPreference(Constants.PREF_KEY_MENU_ITEM);
       MenuItem selectedMenuItem = bottomMenuItems.first;
       if (menuItem != null) {
         selectedMenuItem = MenuItem.fromJson(jsonDecode(menuItem));
@@ -39,7 +39,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       emit(state.copyWith(status: () => HomeStatus.loaded, bottomMenuItems: () => bottomMenuItems, selectedBottomMenuItem: () => selectedMenuItem));
     } catch (error) {
       log.e("HomeBloc::Error in _onInitializeHomePageToState: $error");
-      emit(state.copyWith(status: () => HomeStatus.error, message: () => commonHelper.getStringLabel("access_revoked")));
+      emit(state.copyWith(status: () => HomeStatus.error, message: () => commonHelper.getStringLabelSync("access_revoked")));
     }
   }
 

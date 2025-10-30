@@ -24,9 +24,9 @@ class TokenService {
   }
 
   /// Check if the current access token is expired or about to expire
-  bool isTokenExpired() {
+  Future<bool> isTokenExpired() async {
     try {
-      final userData = _prefRepo.getPreference(Constants.PREF_KEY_USER);
+      final userData = await _prefRepo.getPreference(Constants.PREF_KEY_USER);
       if (userData == null || userData.isEmpty) {
         log.w("TokenService::isTokenExpired::No user data found");
         return true;
@@ -68,7 +68,7 @@ class TokenService {
         await Future.delayed(const Duration(milliseconds: 100));
       }
       // Check if refresh was successful by checking if we have a valid token
-      final token = _prefRepo.getPreference(Constants.PREF_KEY_AUTH_TOKEN);
+      final token = await _prefRepo.getPreference(Constants.PREF_KEY_AUTH_TOKEN);
       return token != null && token.isNotEmpty;
     }
 
@@ -81,7 +81,7 @@ class TokenService {
         return false;
       }
 
-      final refreshToken = _prefRepo.getPreference(Constants.PREF_KEY_REFRESH_TOKEN);
+      final refreshToken = await _prefRepo.getPreference(Constants.PREF_KEY_REFRESH_TOKEN);
       if (refreshToken == null || refreshToken.isEmpty) {
         log.w("TokenService::refreshAccessToken::No refresh token available");
         return false;
@@ -100,7 +100,7 @@ class TokenService {
         await _prefRepo.savePreference(Constants.PREF_KEY_REFRESH_TOKEN, newRefreshToken);
 
         // Update user data with new token information
-        final userData = _prefRepo.getPreference(Constants.PREF_KEY_USER);
+        final userData = await _prefRepo.getPreference(Constants.PREF_KEY_USER);
         if (userData != null && userData.isNotEmpty) {
           final user = UserModel.fromJson(userData);
           // Calculate expiry timestamp: current time + expiresIn seconds
@@ -139,13 +139,13 @@ class TokenService {
   Future<String?> getValidAccessToken() async {
     try {
       // Check if we have any valid tokens at all
-      if (!hasValidTokens()) {
+      if (!(await hasValidTokens())) {
         log.w("TokenService::getValidAccessToken::No valid tokens found");
         // Don't trigger logout here - let the calling API decide
         return null;
       }
 
-      if (isTokenExpired()) {
+      if (await isTokenExpired()) {
         log.d("TokenService::getValidAccessToken::Token expired, attempting refresh");
         final refreshSuccess = await refreshAccessToken();
         if (!refreshSuccess) {
@@ -155,7 +155,7 @@ class TokenService {
         }
       }
 
-      final token = _prefRepo.getPreference(Constants.PREF_KEY_AUTH_TOKEN);
+      final token = await _prefRepo.getPreference(Constants.PREF_KEY_AUTH_TOKEN);
       if (token == null || token.isEmpty) {
         log.w("TokenService::getValidAccessToken::No access token available");
         // Don't trigger logout here - let the calling API decide
@@ -182,10 +182,10 @@ class TokenService {
   }
 
   /// Check if user has valid tokens (access token or refresh token)
-  bool hasValidTokens() {
+  Future<bool> hasValidTokens() async {
     try {
-      final accessToken = _prefRepo.getPreference(Constants.PREF_KEY_AUTH_TOKEN);
-      final refreshToken = _prefRepo.getPreference(Constants.PREF_KEY_REFRESH_TOKEN);
+      final accessToken = await _prefRepo.getPreference(Constants.PREF_KEY_AUTH_TOKEN);
+      final refreshToken = await _prefRepo.getPreference(Constants.PREF_KEY_REFRESH_TOKEN);
 
       return (accessToken != null && accessToken.isNotEmpty) || (refreshToken != null && refreshToken.isNotEmpty);
     } catch (e) {

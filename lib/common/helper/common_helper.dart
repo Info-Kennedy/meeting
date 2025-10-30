@@ -7,19 +7,53 @@ import 'package:logger/logger.dart';
 
 class CommonHelper {
   final log = Logger();
+  String? _cachedLanguage;
 
   CommonHelper();
 
-  String getIntlLabel(dynamic labels) {
+  /// Synchronous version that uses cached language or defaults to "en"
+  /// Use this in build methods and synchronous contexts
+  String getIntlLabelSync(dynamic labels) {
     labels = labels is Map<String, dynamic> ? labels : Map<String, String>.from(jsonDecode(labels));
-    PreferencesRepository pref = getIt<PreferencesRepository>();
-    String userLanguage = pref.getPreference(Constants.PREF_KEY_USER_LANGUAGE) ?? "en";
+    String userLanguage = _cachedLanguage ?? "en";
     return labels[userLanguage] ?? '-';
   }
 
-  String getStringLabel(String label) {
+  /// Synchronous version that uses cached language or defaults to "en"
+  /// Use this in build methods and synchronous contexts
+  String getStringLabelSync(String label) {
+    String userLanguage = _cachedLanguage ?? "en";
+    return AppStrings.string[userLanguage]?[label] ?? "-";
+  }
+
+  /// Initialize language cache - call this at app startup
+  Future<void> initializeLanguage() async {
+    try {
+      PreferencesRepository pref = getIt<PreferencesRepository>();
+      _cachedLanguage = await pref.getPreference(Constants.PREF_KEY_USER_LANGUAGE);
+    } catch (e) {
+      log.e("CommonHelper::initializeLanguage::Error: $e");
+      _cachedLanguage = "en";
+    }
+  }
+
+  /// Update language cache when language changes
+  Future<void> updateLanguageCache(String language) async {
+    _cachedLanguage = language;
+  }
+
+  Future<String> getIntlLabel(dynamic labels) async {
+    labels = labels is Map<String, dynamic> ? labels : Map<String, String>.from(jsonDecode(labels));
     PreferencesRepository pref = getIt<PreferencesRepository>();
-    String userLanguage = pref.getPreference(Constants.PREF_KEY_USER_LANGUAGE) ?? "en";
+    String userLanguage = await pref.getPreference(Constants.PREF_KEY_USER_LANGUAGE) ?? "en";
+    _cachedLanguage = userLanguage;
+    return labels[userLanguage] ?? '-';
+  }
+
+  Future<String> getStringLabel(String label) async {
+    PreferencesRepository pref = getIt<PreferencesRepository>();
+    String userLanguage = await pref.getPreference(Constants.PREF_KEY_USER_LANGUAGE) ?? "en";
+    _cachedLanguage = userLanguage;
     return AppStrings.string[userLanguage]?[label] ?? "-";
   }
 

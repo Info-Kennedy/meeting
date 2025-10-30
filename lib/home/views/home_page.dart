@@ -51,7 +51,7 @@ class _HomePageState extends State<HomePage> {
           return SafeArea(
             child: NetworkAwareScaffoldWithBanner(
               body: state.status == HomeStatus.initial
-                  ? Center(child: LoaderWidget(loadingText: commonHelper.getStringLabel("initializing")))
+                  ? Center(child: LoaderWidget(loadingText: commonHelper.getStringLabelSync("initializing")))
                   : Stack(children: [_getBodyContent(state.selectedBottomMenuItem)]),
               bottomNavigationBar: state.showBottomNav
                   ? BottomNavigationWidget(

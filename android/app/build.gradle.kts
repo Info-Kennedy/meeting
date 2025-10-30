@@ -24,7 +24,7 @@ android {
         applicationId = "task.amazon.chime"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 24 // Twilio Video SDK requires minimum SDK 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -41,4 +41,10 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Twilio Video SDK
+    // Latest version available at: https://www.twilio.com/docs/video/android-getting-started
+    implementation("com.twilio:video-android:7.9.1")
 }

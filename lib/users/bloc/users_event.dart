@@ -10,3 +10,7 @@ sealed class UsersEvent extends Equatable {
 class InitializeUsersPage extends UsersEvent {
   const InitializeUsersPage();
 }
+
+class RefreshUsers extends UsersEvent {
+  const RefreshUsers();
+}

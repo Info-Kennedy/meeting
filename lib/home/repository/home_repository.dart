@@ -16,7 +16,7 @@ class HomeRepository {
     List<MenuItem> menuItems = [];
     try {
       List<Map<String, dynamic>> data = [];
-      final userData = prefRepo.getPreference(Constants.PREF_KEY_USER);
+      final userData = await prefRepo.getPreference(Constants.PREF_KEY_USER);
       if (userData?.isNotEmpty == true) {
         data = List<Map<String, dynamic>>.from(Constants.navConfig.BOTTOM_NAVIGATION_CONFIG_USER);
         menuItems = data.map((datum) => MenuItem.fromJson(datum)).toList();

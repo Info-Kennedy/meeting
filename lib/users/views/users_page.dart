@@ -12,7 +12,11 @@ class UsersPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => UsersBloc(
-        repository: UsersRepository(prefRepo: getIt<PreferencesRepository>(), apiRepo: getIt<NetworkAwareApiRepository>()),
+        repository: UsersRepository(
+          prefRepo: getIt<PreferencesRepository>(),
+          apiRepo: getIt<NetworkAwareApiRepository>(),
+          dbService: getIt<EncryptedDatabaseService>(),
+        ),
       )..add(InitializeUsersPage()),
       child: const UsersScreen(),
     );

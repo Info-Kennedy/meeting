@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chime/common/common.dart';
 import 'package:chime/users/bloc/users_bloc.dart';
 import 'package:flutter/material.dart';
@@ -33,11 +34,11 @@ class _UsersScreenState extends State<UsersScreen> {
       builder: (context, state) {
         return SafeArea(
           child: Scaffold(
-            // appBar: AppbarWidget(context: context, themeIcon: false, title: commonHelper.getStringLabel("users")),
+            // appBar: AppbarWidget(context: context, themeIcon: false, title: commonHelper.getStringLabelSync("users")),
             body: state.status == UsersStatus.loading || state.status == UsersStatus.initial
-                ? Center(child: LoaderWidget(loadingText: commonHelper.getStringLabel("loading_text")))
+                ? Center(child: LoaderWidget(loadingText: commonHelper.getStringLabelSync("loading_text")))
                 : state.users.isEmpty
-                ? Center(child: Text(commonHelper.getStringLabel("no_data_found")))
+                ? Center(child: Text(commonHelper.getStringLabelSync("no_data_found")))
                 : ListView.separated(
                     itemCount: state.users.length,
                     separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade300),
@@ -48,8 +49,8 @@ class _UsersScreenState extends State<UsersScreen> {
                       final DateTime? createdAt = user['createdAt'] != null ? DateTime.tryParse(user['createdAt']) : null;
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundImage: avatar != null && avatar.isNotEmpty ? NetworkImage(avatar) : null,
                           backgroundColor: Colors.grey[200],
+                          foregroundImage: avatar != null && avatar.isNotEmpty ? CachedNetworkImageProvider(avatar) : null,
                           child: avatar == null || avatar.isEmpty ? Icon(Icons.person, color: Colors.grey[500]) : null,
                         ),
                         title: Text(name, style: TextStyle(fontWeight: FontWeight.w600)),

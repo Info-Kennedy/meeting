@@ -19,6 +19,9 @@ Future<void> main() async {
   // Initialize network service
   await getIt<NetworkService>().initialize();
 
+  // Initialize language cache for CommonHelper
+  await CommonHelper().initializeLanguage();
+
   runApp(
     MultiRepositoryProvider(
       providers: [
@@ -33,12 +36,10 @@ Future<void> main() async {
               final loginBloc = LoginBloc(
                 repository: LoginRepository(prefRepo: getIt<PreferencesRepository>(), apiRepo: getIt<NetworkAwareApiRepository>()),
               )..add(const InitializeLogin());
-
               // Set up 401 callback to trigger logout
               getIt<NetworkAwareApiRepository>().setUnauthorizedCallback(() {
                 loginBloc.add(Logout());
               });
-
               return loginBloc;
             },
           ),

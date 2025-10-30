@@ -5,19 +5,23 @@ import 'package:get_it/get_it.dart';
 import 'package:chime/home/bloc/home_bloc.dart';
 import 'package:chime/home/repository/home_repository.dart';
 import 'package:chime/login/repository/login_repository.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 final GetIt getIt = GetIt.instance;
 
 Future<void> setupLocator() async {
-  // Register SharedPreferences
-  final sharedPreferences = await SharedPreferences.getInstance();
-  getIt.registerSingleton<SharedPreferences>(sharedPreferences);
+  // Register FlutterSecureStorage
+  const secureStorage = FlutterSecureStorage();
+  getIt.registerSingleton<FlutterSecureStorage>(secureStorage);
 
   // Register PreferencesRepository
-  getIt.registerSingleton<PreferencesRepository>(PreferencesRepository(sharedPreferences));
+  getIt.registerSingleton<PreferencesRepository>(PreferencesRepository(secureStorage));
 
-  // Initialize and configure Sembast DB
+  // Initialize and configure Encrypted Sembast DB
+  final dbService = EncryptedDatabaseService(secureStorage);
+  await dbService.initialize();
+  getIt.registerSingleton<EncryptedDatabaseService>(dbService);
+
   //Register DIO
   getIt.registerSingleton<Dio>(Dio());
 

@@ -39,13 +39,18 @@ dependencies:
   get_it: ^8.2.0
 
   # Local Storage
-  shared_preferences: ^2.5.3
+  sembast: ^3.8.5+1
+  path_provider: ^2.1.5
+  path: ^1.9.0
+  flutter_secure_storage: ^9.2.4
+  encrypt: ^5.0.3
   
   # Navigation
   go_router: ^16.3.0
 
   # Network
   dio: ^5.9.0
+  http: ^1.2.2
   connectivity_plus: ^7.0.0
 
   # General
@@ -61,6 +66,12 @@ dependencies:
   # UI/Theme
   flutter_svg: ^2.2.1
   toastification: ^3.0.3
+  
+  # Permissions
+  permission_handler: ^11.3.1
+  
+  # JWT for Twilio token generation
+  dart_jsonwebtoken: ^2.9.2
   
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

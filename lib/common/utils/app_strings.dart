@@ -37,5 +37,6 @@ mixin AppStrings {
     "fill": "Fill",
     "loading_text": "Loading please wait...",
     "users": "Users",
+    "create_your_first_meeting": "Create Your First Meeting",
   };
 }

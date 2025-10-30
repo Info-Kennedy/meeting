@@ -1,33 +1,32 @@
-import "package:shared_preferences/shared_preferences.dart";
+import "package:flutter_secure_storage/flutter_secure_storage.dart";
 
 class PreferencesRepository {
-  final SharedPreferences sharedPreferences;
+  final FlutterSecureStorage secureStorage;
 
-  PreferencesRepository(this.sharedPreferences);
+  PreferencesRepository(this.secureStorage);
 
   Future<void> savePreference(String key, String value) async {
-    await sharedPreferences.setString(key, value);
+    await secureStorage.write(key: key, value: value);
   }
 
-  String? getPreference(String key) {
-    return sharedPreferences.getString(key);
+  Future<String?> getPreference(String key) async {
+    return await secureStorage.read(key: key);
   }
 
   Future<void> removePreference(String key) async {
-    await sharedPreferences.remove(key);
+    await secureStorage.delete(key: key);
   }
 
   Future<void> removeAllPreference() async {
-    await sharedPreferences.clear();
+    await secureStorage.deleteAll();
   }
 
-  Map<String, String> getAllPreferences() {
-    return sharedPreferences.getKeys().map((key) => MapEntry(key, sharedPreferences.getString(key) ?? '')).toMap();
-  }
-}
-
-extension on Iterable<MapEntry<String, String>> {
-  Map<String, String> toMap() {
-    return Map.fromEntries(this);
+  /// FlutterSecureStorage doesn't support getting all keys directly.
+  /// This method returns an empty map. If you need to track all preferences,
+  /// consider maintaining a separate list of keys.
+  Future<Map<String, String>> getAllPreferences() async {
+    // FlutterSecureStorage doesn't provide a way to get all keys
+    // Return empty map as this method is not used in the codebase
+    return <String, String>{};
   }
 }

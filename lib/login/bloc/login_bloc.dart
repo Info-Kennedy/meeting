@@ -29,7 +29,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
       final response = await _repository.isUserLoggedIn();
       log.d("LoginBloc:::_onInitializeLoginToState:Response:: $response");
       if (response) {
-        final userData = _repository.prefRepo.getPreference(Constants.PREF_KEY_USER) ?? UserModel.getInstance().toString();
+        final userData = await _repository.prefRepo.getPreference(Constants.PREF_KEY_USER) ?? UserModel.getInstance().toString();
         UserModel userModel = UserModel.fromJson(userData);
         emit(state.copyWith(status: () => LoginStatus.loggedIn, userLanguage: () => "en", userModel: () => userModel));
       } else {
@@ -61,7 +61,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
       final response = await _repository.login(formValue);
       if (response != null) {
         if (response['success'] == true) {
-          emit(state.copyWith(status: () => LoginStatus.success, message: () => response['message']));
+          emit(state.copyWith(status: () => LoginStatus.loggedIn, message: () => response['message']));
         } else {
           emit(state.copyWith(status: () => LoginStatus.error, message: () => response['message']));
         }

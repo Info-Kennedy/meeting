@@ -45,5 +45,12 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Permissions for Amazon Chime SDK -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to camera for video calls</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to microphone for audio calls</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to photo library for sharing content</string>
 </dict>
 </plist>

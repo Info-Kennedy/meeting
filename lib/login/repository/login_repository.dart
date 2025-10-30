@@ -15,7 +15,7 @@ class LoginRepository {
 
   Future<bool> isUserLoggedIn() async {
     try {
-      var user = prefRepo.getPreference(Constants.PREF_KEY_USER);
+      var user = await prefRepo.getPreference(Constants.PREF_KEY_USER);
       return user?.isNotEmpty == true;
     } catch (error) {
       log.e("LoginRepository:::isUserLoggedIn::Error: $error");

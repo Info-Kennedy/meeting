@@ -1,0 +1,106 @@
+import 'package:permission_handler/permission_handler.dart' as permission_handler;
+import 'package:logger/logger.dart';
+
+enum MeetingPermission { microphone, camera, storage }
+
+class PermissionService {
+  final log = Logger();
+
+  /// Request microphone permission
+  Future<bool> requestMicrophonePermission() async {
+    try {
+      final status = await permission_handler.Permission.microphone.request();
+      log.d("PermissionService:::Microphone permission status: $status");
+      return status.isGranted;
+    } catch (e) {
+      log.e("PermissionService:::Error requesting microphone permission: $e");
+      return false;
+    }
+  }
+
+  /// Request camera permission
+  Future<bool> requestCameraPermission() async {
+    try {
+      final status = await permission_handler.Permission.camera.request();
+      log.d("PermissionService:::Camera permission status: $status");
+      return status.isGranted;
+    } catch (e) {
+      log.e("PermissionService:::Error requesting camera permission: $e");
+      return false;
+    }
+  }
+
+  /// Check microphone permission
+  Future<bool> checkMicrophonePermission() async {
+    try {
+      final status = await permission_handler.Permission.microphone.status;
+      return status.isGranted;
+    } catch (e) {
+      log.e("PermissionService:::Error checking microphone permission: $e");
+      return false;
+    }
+  }
+
+  /// Check camera permission
+  Future<bool> checkCameraPermission() async {
+    try {
+      final status = await permission_handler.Permission.camera.status;
+      return status.isGranted;
+    } catch (e) {
+      log.e("PermissionService:::Error checking camera permission: $e");
+      return false;
+    }
+  }
+
+  /// Request all meeting permissions (microphone, camera)
+  Future<Map<MeetingPermission, bool>> requestMeetingPermissions() async {
+    final results = <MeetingPermission, bool>{};
+
+    final micGranted = await requestMicrophonePermission();
+    results[MeetingPermission.microphone] = micGranted;
+
+    final cameraGranted = await requestCameraPermission();
+    results[MeetingPermission.camera] = cameraGranted;
+
+    log.d("PermissionService:::Meeting permissions result: $results");
+    return results;
+  }
+
+  /// Check all meeting permissions
+  Future<Map<MeetingPermission, bool>> checkMeetingPermissions() async {
+    final results = <MeetingPermission, bool>{};
+
+    final micGranted = await checkMicrophonePermission();
+    results[MeetingPermission.microphone] = micGranted;
+
+    final cameraGranted = await checkCameraPermission();
+    results[MeetingPermission.camera] = cameraGranted;
+
+    return results;
+  }
+
+  /// Request screen sharing permission (platform specific - may need platform channels)
+  /// Note: Screen sharing permissions are handled differently on different platforms
+  Future<bool> requestScreenSharePermission() async {
+    try {
+      // On Android, screen capture may require different permissions
+      // On iOS, screen recording is handled through system prompts
+      // This is a placeholder - actual implementation may require platform channels
+      log.d("PermissionService:::Screen share permission requested");
+      return true;
+    } catch (e) {
+      log.e("PermissionService:::Error requesting screen share permission: $e");
+      return false;
+    }
+  }
+
+  /// Open app settings if permissions are permanently denied
+  Future<bool> openAppSettings() async {
+    try {
+      return await permission_handler.openAppSettings();
+    } catch (e) {
+      log.e("PermissionService:::Error opening app settings: $e");
+      return false;
+    }
+  }
+}
